@@ -1,0 +1,6 @@
+---
+modules:
+  test:
+    username: test
+    password: test
+    secret: test

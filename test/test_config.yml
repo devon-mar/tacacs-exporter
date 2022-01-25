@@ -1,0 +1,9 @@
+modules:
+  success:
+    username: integration
+    password: password
+    secret: tac_plus_key
+  reject:
+    username: reject
+    password: password
+    secret: tac_plus_key

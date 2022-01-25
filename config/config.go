@@ -10,6 +10,11 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+const (
+	defaultPort    = "probe"
+	defaultTimeout = 5
+)
+
 type Config struct {
 	Modules map[string]Module `yaml:"modules"`
 }
@@ -37,8 +42,8 @@ func (m *Module) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		Port                string `yaml:"port"`
 	}{
 		SingleConnect:       false,
-		Timeout:             5,
-		Port:                "probe",
+		Timeout:             defaultTimeout,
+		Port:                defaultPort,
 		PrivLevel:           0,
 		LegacySingleConnect: false,
 	}
@@ -79,6 +84,12 @@ func LoadFromFile(path string) (*Config, error) {
 	if err := yaml.UnmarshalStrict(b, c); err != nil {
 		log.Errorf("error unmarshaling YAML: %v", err)
 		return nil, err
+	}
+
+	if len(c.Modules) == 0 {
+		msg := "a config must have at least one module"
+		log.Errorf(msg)
+		return nil, errors.New(msg)
 	}
 
 	log.Infoln("Loaded config successfully.")
