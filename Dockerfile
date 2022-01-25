@@ -3,7 +3,7 @@ ARG TARGETOS TARGETARCH
 
 WORKDIR /go/src/app
 COPY . .
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build .
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH make
 
 FROM scratch
 COPY --from=builder /go/src/app/tacacs-exporter /bin/tacacs-exporter
