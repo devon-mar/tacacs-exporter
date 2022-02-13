@@ -46,7 +46,6 @@ password: test`,
 		},
 		// All possible options
 		{
-
 			`username: test
 password: test
 secret: secret
