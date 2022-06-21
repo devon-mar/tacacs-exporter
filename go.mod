@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/nwaples/tacplus v0.0.3
-	github.com/prometheus/client_golang v1.12.0
+	github.com/prometheus/client_golang v1.12.2
 	github.com/sirupsen/logrus v1.8.1
 	gopkg.in/yaml.v2 v2.4.0
 )
