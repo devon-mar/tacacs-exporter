@@ -80,7 +80,6 @@ func main() {
 
 	var err error
 	exporterConfig, err = config.LoadFromFile(*configPath)
-
 	if err != nil {
 		log.Fatal(err)
 	}
