@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 
 	"github.com/devon-mar/tacacs-exporter/collector"
 	"github.com/devon-mar/tacacs-exporter/config"
@@ -94,5 +96,25 @@ func main() {
 		</body>
 		</html>`))
 	})
-	log.Fatal(http.ListenAndServe(*listenAddr, nil))
+
+	server := http.Server{Addr: *listenAddr}
+	idleConnsClosed := make(chan struct{})
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+
+		signal.Notify(sigCh, os.Interrupt)
+		sig := <-sigCh
+		log.Warnf("received signal %s", sig)
+
+		if err := server.Shutdown(context.Background()); err != nil {
+			log.Printf("HTTP server Shutdown: %v", err)
+		}
+		close(idleConnsClosed)
+	}()
+
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		log.Fatalf("HTTP server ListenAndServe: %v", err)
+	}
+
+	<-idleConnsClosed
 }
