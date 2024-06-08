@@ -5,8 +5,6 @@ import (
 	"io/ioutil"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -82,17 +80,12 @@ func LoadFromFile(path string) (*Config, error) {
 	c := &Config{}
 
 	if err := yaml.UnmarshalStrict(b, c); err != nil {
-		log.Errorf("error unmarshaling YAML: %v", err)
 		return nil, err
 	}
 
 	if len(c.Modules) == 0 {
-		msg := "a config must have at least one module"
-		log.Errorf(msg)
-		return nil, errors.New(msg)
+		return nil, errors.New("a config must have at least one module")
 	}
-
-	log.Infoln("Loaded config successfully.")
 
 	return c, nil
 }

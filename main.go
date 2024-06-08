@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -55,17 +55,17 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 	handler.ServeHTTP(w, r)
 }
 
-func configureLog() {
-	level, err := log.ParseLevel(*logLevel)
-	if err != nil {
-		log.Fatalf("invalid log level %q", *logLevel)
+func configureLogging() {
+	var slogLevel slog.Level
+	if err := slogLevel.UnmarshalText([]byte(*logLevel)); err != nil {
+		slog.Error("invalid log level", "err", err)
+		os.Exit(1)
 	}
-	log.SetLevel(level)
 
-	formatter := &log.TextFormatter{
-		FullTimestamp: true,
-	}
-	log.SetFormatter(formatter)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slogLevel}))
+	slog.SetDefault(logger)
+	// functions from the log package will use this level.
+	slog.SetLogLoggerLevel(slog.LevelInfo)
 }
 
 func main() {
@@ -76,14 +76,15 @@ func main() {
 		fmt.Printf("SHA: %s\n", exporterSha)
 		os.Exit(0)
 	}
-	log.Infoln("starting TACACS exporter")
+	slog.Info("starting TACACS exporter")
 
-	configureLog()
+	configureLogging()
 
 	var err error
 	exporterConfig, err = config.LoadFromFile(*configPath)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("error loading config", "err", err)
+		os.Exit(1)
 	}
 
 	http.Handle(*metricsPath, http.HandlerFunc(metricsHandler))
@@ -104,16 +105,17 @@ func main() {
 
 		signal.Notify(sigCh, os.Interrupt)
 		sig := <-sigCh
-		log.Warnf("received signal %s", sig)
+		slog.Warn("received signal", "signal", sig)
 
 		if err := server.Shutdown(context.Background()); err != nil {
-			log.Printf("HTTP server Shutdown: %v", err)
+			slog.Error("HTTP server Shutdown", "err", err)
 		}
 		close(idleConnsClosed)
 	}()
 
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
-		log.Fatalf("HTTP server ListenAndServe: %v", err)
+		slog.Error("HTTP server ListenAndServe", "err", err)
+		os.Exit(1)
 	}
 
 	<-idleConnsClosed

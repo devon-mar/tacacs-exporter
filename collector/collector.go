@@ -2,13 +2,13 @@ package collector
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/devon-mar/tacacs-exporter/config"
 
 	"github.com/nwaples/tacplus"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -57,7 +57,7 @@ func (c Collector) Describe(ch chan<- *prometheus.Desc) {
 // Collect implements prometheus.Collector
 func (c Collector) Collect(ch chan<- prometheus.Metric) {
 	if err := c.probe(); err != nil {
-		log.WithFields(log.Fields{"err": err, "target": c.Target}).Errorln("Error sending TACACS request")
+		slog.Error("Error sending TACACS request", "err", err, "target", c.Target)
 		c.success.Set(0)
 	} else {
 		c.success.Set(1)
@@ -76,11 +76,10 @@ func (c Collector) probe() error {
 			Secret:       c.Module.Secret,
 			ReadTimeout:  c.Module.Timeout,
 			WriteTimeout: c.Module.Timeout,
-			Log:          log.Print,
 		},
 	}
 
-	logFields := log.WithFields(log.Fields{"target": c.Target, "username": c.Module.Username})
+	logFields := slog.With("target", c.Target, "username", c.Module.Username)
 
 	ctx, cancel := context.WithTimeout(context.Background(), c.Module.Timeout)
 	defer cancel()
@@ -100,10 +99,10 @@ func (c Collector) probe() error {
 	authReply, session, err := client.SendAuthenStart(ctx, &authenStart)
 	c.duration.Set(time.Since(begin).Seconds())
 	if err != nil {
-		logFields.Errorf("Error sending tacacs authentication start: %v", err)
+		logFields.Error("Error sending tacacs authentication start", "err", err)
 		return err
 	}
-	logFields.Debugf("Server message: %q", authReply.ServerMsg)
+	logFields.Debug("reply received message", "message", authReply.ServerMsg)
 
 	if session != nil {
 		session.Close()
