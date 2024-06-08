@@ -2,10 +2,10 @@ package config
 
 import (
 	"errors"
-	"io/ioutil"
+	"os"
 	"time"
 
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -18,33 +18,29 @@ type Config struct {
 }
 
 type Module struct {
-	Username            string
-	Password            string
-	Secret              []byte
-	SingleConnect       bool
-	LegacySingleConnect bool
-	PrivLevel           uint8
-	Port                string
-	Timeout             time.Duration
+	Username            string        `yaml:"username"`
+	Password            string        `yaml:"password"`
+	Secret              []byte        `yaml:"-"`
+	SingleConnect       bool          `yaml:"single_connect"`
+	LegacySingleConnect bool          `yaml:"legacy_single_connect"`
+	PrivLevel           uint8         `yaml:"privilege_level"`
+	Port                string        `yaml:"port"`
+	Timeout             time.Duration `yaml:"-"`
 }
 
 func (m *Module) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type tempModule Module
 	temp := struct {
-		Username            string `yaml:"username"`
-		Password            string `yaml:"password"`
-		Secret              string `yaml:"secret"`
-		SingleConnect       bool   `yaml:"single_connect"`
-		LegacySingleConnect bool   `yaml:"legacy_single_connect"`
-		Timeout             int    `yaml:"timeout"`
-		PrivLevel           uint8  `yaml:"privilege_level"`
-		Port                string `yaml:"port"`
+		Secret      string `yaml:"secret"`
+		Timeout     int    `yaml:"timeout"`
+		*tempModule `yaml:",inline"`
 	}{
-		SingleConnect:       false,
-		Timeout:             defaultTimeout,
-		Port:                defaultPort,
-		PrivLevel:           0,
-		LegacySingleConnect: false,
+		Timeout:    defaultTimeout,
+		tempModule: (*tempModule)(m),
 	}
+	// Defaults
+	temp.Timeout = defaultTimeout
+	temp.Port = defaultPort
 
 	if err := unmarshal(&temp); err != nil {
 		return err
@@ -59,27 +55,25 @@ func (m *Module) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if temp.Secret == "" {
 		return errors.New("secret must not be empty")
 	}
-	m.Username = temp.Username
-	m.Password = temp.Password
 	m.Secret = []byte(temp.Secret)
-	m.SingleConnect = temp.SingleConnect
-	m.LegacySingleConnect = temp.LegacySingleConnect
 	m.Timeout = time.Second * time.Duration(temp.Timeout)
-	m.Port = temp.Port
-	m.PrivLevel = temp.PrivLevel
 
 	return nil
 }
 
 func LoadFromFile(path string) (*Config, error) {
-	b, err := ioutil.ReadFile(path)
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
+
+	d := yaml.NewDecoder(f)
+	d.KnownFields(true)
 
 	c := &Config{}
 
-	if err := yaml.UnmarshalStrict(b, c); err != nil {
+	if err := d.Decode(c); err != nil {
 		return nil, err
 	}
 

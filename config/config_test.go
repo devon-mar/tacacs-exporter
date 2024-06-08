@@ -5,16 +5,16 @@ import (
 	"testing"
 	"time"
 
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func TestModuleUnmarshalYAML(t *testing.T) {
-	testCases := []struct {
+	testCases := map[string]struct {
 		yml  string
 		want *Module
 	}{
 		// Minimum required
-		{
+		"ok-min": {
 			`username: test
 password: password
 secret: secret`,
@@ -27,25 +27,25 @@ secret: secret`,
 			},
 		},
 		// Missing username
-		{
+		"missing-username": {
 			`password: test
 secret: secret`,
 			nil,
 		},
 		// Missing password
-		{
+		"missing-password": {
 			`username: test
 secret: secret`,
 			nil,
 		},
 		// Missing secret
-		{
+		"missing-secret": {
 			`username: test
 password: test`,
 			nil,
 		},
 		// All possible options
-		{
+		"all-options": {
 			`username: test
 password: test
 secret: secret
@@ -66,48 +66,54 @@ port: tty0`,
 			},
 		},
 		// Invalid YAML
-		{`abcdefg`, nil},
+		"invalid-yaml": {`abcdefg`, nil},
 	}
 
-	for i, tc := range testCases {
-		m := Module{}
-		err := yaml.UnmarshalStrict([]byte(tc.yml), &m)
-		if err == nil && tc.want == nil {
-			t.Errorf("[%d] expected an error but got %v", i, m)
-		} else if err != nil && tc.want != nil {
-			t.Errorf("[%d] expected no error but got %v", i, err)
-		} else if tc.want != nil {
-			assertModuleEquals(t, i, &m, tc.want)
-		}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			r := bytes.NewReader([]byte(tc.yml))
+			d := yaml.NewDecoder(r)
+			d.KnownFields(true)
+
+			var m Module
+			err := d.Decode(&m)
+			if err == nil && tc.want == nil {
+				t.Errorf("expected an error but got %v", m)
+			} else if err != nil && tc.want != nil {
+				t.Errorf("expected no error but got %v", err)
+			} else if tc.want != nil {
+				assertModuleEquals(t, &m, tc.want)
+			}
+		})
 	}
 }
 
-func assertModuleEquals(t *testing.T, idx int, have *Module, want *Module) {
+func assertModuleEquals(t *testing.T, have *Module, want *Module) {
 	t.Helper()
 
 	if have.Username != want.Username {
-		t.Errorf("[%d] Username: wanted %q but got %q", idx, want.Username, have.Username)
+		t.Errorf("Username: wanted %q but got %q", want.Username, have.Username)
 	}
 	if have.Password != want.Password {
-		t.Errorf("[%d] Password: wanted %q but got %q", idx, want.Password, have.Password)
+		t.Errorf("Password: wanted %q but got %q", want.Password, have.Password)
 	}
 	if !bytes.Equal(have.Secret, want.Secret) {
-		t.Errorf("[%d] Secret: wanted %q but got %q", idx, want.Secret, have.Secret)
+		t.Errorf("Secret: wanted %q but got %q", want.Secret, have.Secret)
 	}
 	if have.SingleConnect != want.SingleConnect {
-		t.Errorf("[%d] SingleConnect: wanted %t but got %t", idx, want.SingleConnect, have.SingleConnect)
+		t.Errorf("SingleConnect: wanted %t but got %t", want.SingleConnect, have.SingleConnect)
 	}
 	if have.LegacySingleConnect != want.LegacySingleConnect {
-		t.Errorf("[%d] LegacySingleConnect: wanted %t but got %t", idx, want.LegacySingleConnect, have.LegacySingleConnect)
+		t.Errorf("LegacySingleConnect: wanted %t but got %t", want.LegacySingleConnect, have.LegacySingleConnect)
 	}
 	if have.PrivLevel != want.PrivLevel {
-		t.Errorf("[%d] PrivLevel: wanted %d but got %d", idx, want.PrivLevel, have.PrivLevel)
+		t.Errorf("PrivLevel: wanted %d but got %d", want.PrivLevel, have.PrivLevel)
 	}
 	if have.Port != want.Port {
-		t.Errorf("[%d] Port: wanted %q but got %q", idx, want.Port, have.Port)
+		t.Errorf("Port: wanted %q but got %q", want.Port, have.Port)
 	}
 	if have.Timeout != want.Timeout {
-		t.Errorf("[%d] Timeout: wanted %v but got %v", idx, want.Timeout, have.Timeout)
+		t.Errorf("Timeout: wanted %v but got %v", want.Timeout, have.Timeout)
 	}
 }
 
@@ -128,7 +134,7 @@ func TestLoadFromFile(t *testing.T) {
 		Port:     defaultPort,
 		Timeout:  time.Second * 5,
 	}
-	assertModuleEquals(t, 0, &m, &want)
+	assertModuleEquals(t, &m, &want)
 }
 
 func TestLoadFromFileInvalidPath(t *testing.T) {
