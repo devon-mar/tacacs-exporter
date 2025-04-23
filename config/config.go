@@ -19,7 +19,7 @@ type Config struct {
 
 type Module struct {
 	Username            string        `yaml:"username"`
-	Password            string        `yaml:"password"`
+	Password            string        `yaml:"-"`
 	Secret              []byte        `yaml:"-"`
 	SingleConnect       bool          `yaml:"single_connect"`
 	LegacySingleConnect bool          `yaml:"legacy_single_connect"`
@@ -31,6 +31,7 @@ type Module struct {
 func (m *Module) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type tempModule Module
 	temp := struct {
+		Password    string `yaml:"password"`
 		Secret      string `yaml:"secret"`
 		Timeout     int    `yaml:"timeout"`
 		*tempModule `yaml:",inline"`
@@ -46,6 +47,9 @@ func (m *Module) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
+	temp.Password = os.ExpandEnv(temp.Password)
+	temp.Secret = os.ExpandEnv(temp.Secret)
+
 	if temp.Username == "" {
 		return errors.New("username must not be empty")
 	}
@@ -55,6 +59,8 @@ func (m *Module) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if temp.Secret == "" {
 		return errors.New("secret must not be empty")
 	}
+
+	m.Password = temp.Password
 	m.Secret = []byte(temp.Secret)
 	m.Timeout = time.Second * time.Duration(temp.Timeout)
 
