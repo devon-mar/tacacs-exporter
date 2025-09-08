@@ -10,32 +10,36 @@ docker run --rm -d --name tacacs -p 49:49 -v "$(pwd)/tac_plus.cfg:/etc/tac_plus/
 echo "::endgroup::"
 
 echo "Starting tacacs-exporter"
+export TEST_SECRET=tac_plus_key
+export TEST_PASSWORD=password
 ../tacacs-exporter -config "$(pwd)/test_config.yml" &
 PID=$!
 sleep 1
 
 # test permit
 echo "Test 1: Auth Pass"
-RESP=$(curl --fail --silent --show-error "http://localhost:9949/metrics?target=127.0.0.1:49&module=success")
+for MOD in success successenv; do
+    echo "Test 1 - ${MOD}"
+    RESP=$(curl --fail --silent --show-error "http://localhost:9949/metrics?target=127.0.0.1:49&module="${MOD})
 
-echo "::group::Exporter Output"
-echo "$RESP"
-echo "::endgroup::"
+    echo "::group::Exporter Output"
+    echo "$RESP"
+    echo "::endgroup::"
 
-set +e
-echo "$RESP" | grep -q "^tacacs_success 1"
-RET=$?
-if [ $RET -ne 0 ]; then
-    echo "::error::tacacs_success 1."
-    RC=$RET
-fi
-echo "$RESP" | grep -q "^tacacs_status_code 1"
-RET=$?
-if [ $RET -ne 0 ]; then
-    echo "::error::tacacs_status_code wasn't 1."
-    RC=$RET
-fi
-
+    set +e
+    echo "$RESP" | grep -q "^tacacs_success 1"
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        echo "::error::tacacs_success 1."
+        RC=$RET
+    fi
+    echo "$RESP" | grep -q "^tacacs_status_code 1"
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        echo "::error::tacacs_status_code wasn't 1."
+        RC=$RET
+    fi
+done
 # test reject
 echo "Test 2: AuthFail(2)"
 RESP=$(curl --fail --silent --show-error "http://localhost:9949/metrics?target=127.0.0.1:49&module=reject")
