@@ -4,3 +4,7 @@ modules:
     username: test
     password: test
     secret: test
+  testenv:
+    username: test
+    password: ${TEST_PASSWORD}
+    secret: ${TEST_SECRET}
