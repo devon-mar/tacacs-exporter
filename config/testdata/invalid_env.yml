@@ -7,4 +7,4 @@ modules:
   testenv:
     username: test
     password: ${TEST_PASSWORD}
-    secret: ${TEST_SECRET}
+    secret: ${UNSET_SECRET}

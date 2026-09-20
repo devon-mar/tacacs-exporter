@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"os"
 	"testing"
 	"time"
 
@@ -118,6 +119,9 @@ func assertModuleEquals(t *testing.T, have *Module, want *Module) {
 }
 
 func TestLoadFromFile(t *testing.T) {
+	os.Setenv("TEST_SECRET", "test")
+	os.Setenv("TEST_PASSWORD", "test")
+
 	c, err := LoadFromFile("testdata/valid.yml")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
@@ -127,6 +131,10 @@ func TestLoadFromFile(t *testing.T) {
 	if !ok {
 		t.Fatalf("Module 'test' not found")
 	}
+	m2, ok := c.Modules["testenv"]
+	if !ok {
+		t.Fatalf("Module 'testenv' not found")
+	}
 	want := Module{
 		Username: "test",
 		Password: "test",
@@ -135,6 +143,7 @@ func TestLoadFromFile(t *testing.T) {
 		Timeout:  time.Second * 5,
 	}
 	assertModuleEquals(t, &m, &want)
+	assertModuleEquals(t, &m2, &want)
 }
 
 func TestLoadFromFileInvalidPath(t *testing.T) {
@@ -153,6 +162,15 @@ func TestLoadFromFileNoModules(t *testing.T) {
 
 func TestLoadFromFileInvalidYAML(t *testing.T) {
 	_, err := LoadFromFile("testdata/invalid_yaml.yml")
+	if err == nil {
+		t.Errorf("Expected an error but got nil")
+	}
+}
+
+func TestLoadFromFileUnsetENV(t *testing.T) {
+	os.Setenv("TEST_SECRET", "test")
+	os.Setenv("TEST_PASSWORD", "test")
+	_, err := LoadFromFile("testdata/invalid_env.yml")
 	if err == nil {
 		t.Errorf("Expected an error but got nil")
 	}

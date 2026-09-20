@@ -7,3 +7,7 @@ modules:
     username: reject
     password: password
     secret: tac_plus_key
+  successenv:
+    username: integration
+    password: ${TEST_PASSWORD}
+    secret: ${TEST_SECRET}
